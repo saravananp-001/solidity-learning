@@ -14,7 +14,7 @@ contract A {
         return "boo A";
     }
 
-    function sendETH(address payable _addr,uint _amount) payable external {
+    function sendETH(address payable _addr,uint _amount) external {
         // require(_amount < address(this).balance,"the amount should be less then the contract eth balance");
         if(_amount > address(this).balance)
         {
