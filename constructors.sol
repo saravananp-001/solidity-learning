@@ -7,12 +7,9 @@ contract Constructors{
     uint a =0;
     uint b= 0;
 
-    // it wroks for both with data and without data
-    // fallback() payable external {  
+    // fallback() payable external {
 
     // }
-
-    // this receive works when without the data
     receive() payable external{
 
     }
@@ -33,4 +30,15 @@ contract Constructors{
     function ethBalance() external view returns(uint){
         return address(this).balance;
     }
+}
+
+contract B is Constructors{
+    constructor(uint _a, uint _b) Constructors(_a,_b)
+    {
+    }
+
+}
+
+contract C is Constructors(10,12){
+
 }
