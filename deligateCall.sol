@@ -22,8 +22,10 @@ contract TestContract{
 
     function setValue(address _addr, string memory _name,uint _bal) external {
 
-       (bool sucess,)= _addr.delegatecall(abi.encodeWithSignature("setvalue(string,uint256)",_name,_bal));
-       require(sucess,"function failed");
+    //    (bool sucess,)= _addr.delegatecall(abi.encodeWithSignature("setvalue(string,uint256)",_name,_bal));
+       (bool sucess2,)= _addr.delegatecall(abi.encodeWithSelector(callContract.setvalue.selector, _name,_bal));
+    //    require(sucess,"function failed");
+        require(sucess2,"function failed");
         
     }
 
