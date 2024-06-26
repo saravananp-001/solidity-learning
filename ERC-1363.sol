@@ -34,7 +34,7 @@ interface IERC1363Spender {
     function onApprovalReceived(address owner, uint256 value, bytes calldata data) external returns (bytes4);
 }
 
-contract ARC20Token is IERC1363, IERC165 {
+contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender, IERC165 {
     string public name;
     string public symbol;
     uint8 public decimals;
@@ -43,13 +43,18 @@ contract ARC20Token is IERC1363, IERC165 {
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
+    uint256 public receivedTokens;
+    uint256 public aprovedTokens;
+
+    event TokensReceived(address operator, address from, uint256 value, bytes data);
+    event TokensApproved(address owner, uint256 value, bytes data);
+    
     bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
     bytes4 private constant _INTERFACE_ID_ERC20 = 0x36372b07;
     bytes4 private constant _INTERFACE_ID_ERC1363 = 0x4bbee2df;
-    bytes4 private constant _INTERFACE_ID_ERC1363Receiver = 0x88a7ca5c;
-    bytes4 private constant _INTERFACE_ID_ERC1363Spender = 0x7b04a2d0;
-
-
+    bytes4 private constant _INTERFACE_ID_ERC1363_RECEIVER = 0x88a7ca5c;
+    bytes4 private constant _INTERFACE_ID_ERC1363_SPENDER = 0x7b04a2d0;
+    
     constructor(
         string memory _name,
         string memory _symbol,
@@ -125,8 +130,8 @@ contract ARC20Token is IERC1363, IERC165 {
             interfaceId == _INTERFACE_ID_ERC165 ||
             interfaceId == _INTERFACE_ID_ERC20 ||
             interfaceId == _INTERFACE_ID_ERC1363 ||
-            interfaceId == _INTERFACE_ID_ERC1363Receiver ||
-            interfaceId == _INTERFACE_ID_ERC1363Spender;
+            interfaceId == _INTERFACE_ID_ERC1363_RECEIVER ||
+            interfaceId == _INTERFACE_ID_ERC1363_SPENDER;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
@@ -176,5 +181,28 @@ contract ARC20Token is IERC1363, IERC165 {
             size := extcodesize(account)
         }
         return size > 0;
+    }
+
+    // Implement IERC1363Receiver
+    function onTransferReceived(address operator, address from, uint256 value, bytes calldata data) external override returns (bytes4) {
+        // Update the state variable when tokens are received
+        receivedTokens += value;
+
+        // Emit an event
+        emit TokensReceived(operator, from, value, data);
+
+        // Return the selector to confirm the token transfer
+        return this.onTransferReceived.selector;
+    }
+
+    function onApprovalReceived(address owner, uint256 value, bytes calldata data) external override returns (bytes4){
+        aprovedTokens += value;
+
+        // Emit an event
+        emit TokensApproved(owner, value, data);
+
+        // Return the selector to confirm the token approval
+        return this.onApprovalReceived.selector;
+
     }
 }
