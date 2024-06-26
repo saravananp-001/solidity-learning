@@ -117,7 +117,7 @@ interface IERC721TokenReceiver {
 
 }
 
-contract ERC721 is IERC721 {
+contract ERC721 is IERC721,IERC721TokenReceiver {
 
     uint256 public tokenId;
     mapping(uint256 => address) internal _ownerOf;
@@ -125,7 +125,8 @@ contract ERC721 is IERC721 {
     mapping(address => uint256) internal  _balanceOf;
     mapping(uint256 => address) internal  _approvals;
     mapping(address => mapping(address => bool)) public isApprovedForAll;  //function isApprovedForAll(address _owner, address _operator) external view returns (bool){}
-
+    
+    event ERC721Received(address operator, address from, uint256 _tokenId, bytes data);
     function supportsInterface(bytes4 interfaceID) external pure returns (bool){
         return (interfaceID == type(IERC721).interfaceId || interfaceID == type(IERC165).interfaceId);
     }
@@ -185,6 +186,11 @@ contract ERC721 is IERC721 {
     function safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable{
         transferFrom(_from,_to,_tokenId);
         require(_to.code.length == 0 || IERC721TokenReceiver(_to).onERC721Received(msg.sender,_from,_tokenId," ") ==IERC721TokenReceiver.onERC721Received.selector,"unsafe recipient"); 
+    }
+
+    function onERC721Received(address _operator, address _from, uint256 _tokenId, bytes memory _data) external returns(bytes4){
+        emit ERC721Received(_operator, _from, _tokenId, _data);
+        return this.onERC721Received.selector;
     }
 
     function _mint(address _to, string memory _tokenURI) internal{
