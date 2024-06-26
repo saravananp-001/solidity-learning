@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+interface IERC165 {
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
+
 interface IERC20 {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
@@ -30,19 +34,20 @@ interface IERC1363Spender {
     function onApprovalReceived(address owner, uint256 value, bytes calldata data) external returns (bytes4);
 }
 
-contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
+contract ARC20Token is IERC1363, IERC165 {
     string public name;
     string public symbol;
     uint8 public decimals;
     uint256 private _totalSupply;
-    uint256 public receivedTokens;
-    uint256 public aprovedTokens;
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
-    event TokensReceived(address operator, address from, uint256 value, bytes data);
-    event TokensApproved(address owner, uint256 value, bytes data);
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
+    bytes4 private constant _INTERFACE_ID_ERC20 = 0x36372b07;
+    bytes4 private constant _INTERFACE_ID_ERC1363 = 0x4bbee2df;
+    bytes4 private constant _INTERFACE_ID_ERC1363Receiver = 0x88a7ca5c;
+    bytes4 private constant _INTERFACE_ID_ERC1363Spender = 0x7b04a2d0;
 
 
     constructor(
@@ -88,7 +93,7 @@ contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
         return transferAndCall(to, value, "");
     }
 
-    function transferAndCall(address to, uint256 value, bytes memory data) public override returns (bool) {
+    function transferAndCall(address to, uint256 value, bytes calldata data) public override returns (bool) {
         _transfer(msg.sender, to, value);
         require(_checkAndCallTransfer(msg.sender, to, value, data), "ARC20Token: _checkAndCallTransfer failed");
         return true;
@@ -98,7 +103,7 @@ contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
         return transferFromAndCall(from, to, value, "");
     }
 
-    function transferFromAndCall(address from, address to, uint256 value, bytes memory data) public override returns (bool) {
+    function transferFromAndCall(address from, address to, uint256 value, bytes calldata data) public override returns (bool) {
         _transfer(from, to, value);
         _approve(from, msg.sender, _allowances[from][msg.sender] - value);
         require(_checkAndCallTransfer(from, to, value, data), "ARC20Token: _checkAndCallTransfer failed");
@@ -109,10 +114,19 @@ contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
         return approveAndCall(spender, value, "");
     }
 
-    function approveAndCall(address spender, uint256 value, bytes memory data) public override returns (bool) {
+    function approveAndCall(address spender, uint256 value, bytes calldata data) public override returns (bool) {
         _approve(msg.sender, spender, value);
         require(_checkAndCallApprove(spender, value, data), "ARC20Token: _checkAndCallApprove failed");
         return true;
+    }
+
+    function supportsInterface(bytes4 interfaceId) external view override returns (bool) {
+        return 
+            interfaceId == _INTERFACE_ID_ERC165 ||
+            interfaceId == _INTERFACE_ID_ERC20 ||
+            interfaceId == _INTERFACE_ID_ERC1363 ||
+            interfaceId == _INTERFACE_ID_ERC1363Receiver ||
+            interfaceId == _INTERFACE_ID_ERC1363Spender;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
@@ -122,11 +136,6 @@ contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
         _balances[sender] -= amount;
         _balances[recipient] += amount;
         emit Transfer(sender, recipient, amount);
-
-        // // If the recipient is the contract itself, call onTransferReceived
-        // if (recipient == address(this)) {
-        //     require(_checkAndCallTransfer(sender, recipient, amount, ""), "ARC20Token: _checkAndCallTransfer failed");
-        // }
     }
 
     function _approve(address owner, address spender, uint256 amount) internal {
@@ -167,28 +176,5 @@ contract ARC20Token is IERC1363, IERC1363Receiver, IERC1363Spender{
             size := extcodesize(account)
         }
         return size > 0;
-    }
-
-    // Implement IERC1363Receiver
-    function onTransferReceived(address operator, address from, uint256 value, bytes calldata data) external override returns (bytes4) {
-        // Update the state variable when tokens are received
-        receivedTokens += value;
-
-        // Emit an event
-        emit TokensReceived(operator, from, value, data);
-
-        // Return the selector to confirm the token transfer
-        return this.onTransferReceived.selector;
-    }
-
-    function onApprovalReceived(address owner, uint256 value, bytes calldata data) external override returns (bytes4){
-        aprovedTokens += value;
-        
-        // Emit an event
-        emit TokensApproved(owner, value, data);
-        
-        // Return the selector to confirm the token approval
-        return this.onApprovalReceived.selector;
-
     }
 }
